@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Shift Overlap</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            font-size: 11px;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 30px;
+            color: #2c3e50;
+        }
+
+        h2 {
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        #manual textarea {
+            width: 100%;
+            height: 30px;
+            font-family: Arial;
+            font-size: 11px;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            resize: vertical;
+        }
+
+        .whatsapp textarea {
+            width: 100%;
+            height: 300px;
+            font-family: Arial;
+            font-size: 11px;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            resize: vertical;
+        }
+
+        button {
+            background: #2c3e50;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        button:hover {
+            background: #1a252f;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .output {
+            margin-top: 30px;
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0px 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Improve report look */
+        .output h3 {
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 5px;
+            margin-top: 25px;
+        }
+
+        .output table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 10px;
+            background: white;
+        }
+
+        .output th {
+            background: #6d8dac;
+            color: white;
+            text-align: left;
+        }
+
+        .output td, .output th {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+
+        .output tr:nth-child(even) {
+            background: #f9fbfc;
+        }
+
+        .output hr {
+            border: none;
+            border-top: 1px solid #ddd;
+            margin: 20px 0;
+        }
+
+        .output b {
+            color: #34495e;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+
+
+        <form method="POST">
+            <div id="manual"></div>
+                <h3>Team Members on Shift</h3>
+                <textarea name="team" rows="1" placeholder="One per line"></textarea><br><br>
+
+                <h3>Cases for Next Shift</h3>
+                <textarea name="cases" rows="1"></textarea><br><br>
+
+                <h3>Additional Notes</h3>
+                <textarea name="notes" rows="1"></textarea><br><br>
+
+                <h3>Statistics</h3>
+                <b>No Value Cases:</b><input type="text" name="novalue"><br><br>
+                <b>Alerts NOC:</b> <input type="text" name="noc"><br><br>
+                <b>Alerts SOC:</b> <input type="text" name="soc"><br><br>
+            </div>
+
+            <div class="whatsapp">
+                <h2>Paste Whatapp chat data below</h2>
+
+                <textarea name="text">{{ text }}</textarea><br><br>
+                <button type="submit">Generate</button>
+            </div>
+        </form>
+
+        {% if output %}
+        <div>
+            <button onclick="copyReport()" style="margin-top:10px;">
+                📋 Copy Report
+            </button>
+            <div class="output" id="report">
+                {{ output | safe }}
+            </div>
+
+            <button type="button" onclick="clearAll()" style="
+            background:#2c3e50;
+            color:white;
+            padding:8px 16px;
+            border:none;
+            border-radius:5px;
+            cursor:pointer;
+            font-size:11px;
+            margin-top:10px;
+            ">
+            Clear
+            </button>
+        </div>
+        
+        {% endif %}
+
+        <!-- <script>
+            function copyReport() {
+                const report = document.getElementById("report").innerText;
+                navigator.clipboard.writeText(report).then(() => {
+                    alert("Report copied to clipboard!");
+                });
+            }
+        </script> -->
+        <script>
+            function copyReport() {
+                const report = document.getElementById("report");
+
+                const htmlContent = report.innerHTML;
+                const textContent = report.innerText;
+
+                const blobHtml = new Blob([htmlContent], { type: "text/html" });
+                const blobText = new Blob([textContent], { type: "text/plain" });
+
+                const data = [
+                    new ClipboardItem({
+                        "text/html": blobHtml,
+                        "text/plain": blobText
+                    })
+                ];
+
+                navigator.clipboard.write(data).then(() => {
+                    alert("Report copied with formatting!");
+                }).catch(err => {
+                    alert("Copy failed: " + err);
+                });
+            }
+
+            function clearAll() {
+                // Clear textarea
+                document.querySelector("textarea[name='text']").value = "";
+
+                // Clear report output
+                const reportDiv = document.getElementById("report");
+                if (reportDiv) {
+                    reportDiv.innerHTML = "";
+                }
+
+                // Optional: remove entire card (cleaner UI)
+                const card = document.querySelector(".card");
+                if (card) {
+                    card.remove();
+                }
+            }
+        </script>
+
+    </div>
+</body>
+</html>
