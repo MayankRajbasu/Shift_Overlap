@@ -323,7 +323,7 @@ def clean_field(val):
 
 def parse_ddos_html(lines):
     if not lines:
-        return "<h3>4. DDoS and Security Events</h3><p>N/A</p>"
+        return "<hr><h3>4. DDoS and Security Events</h3> <br> <p>N/A</p>"
 
     headers = [
         "Customer", "Application / Policy", "Impact Confirmed", "Attack Size",
@@ -342,7 +342,7 @@ def parse_ddos_html(lines):
     if current:
         records.append(current)
 
-    html = ["<h3>4. DDoS and Security Events</h3><table>"]
+    html = ["<h3>4. DDoS and Security Events</h3><table> <br>"]
     html.append("<tr>" + "".join(f"<th>{h}</th>" for h in headers) + "</tr>")
 
     for record in records:
@@ -391,7 +391,7 @@ def generate_email_report(form, parsed_html):
     
     team = "<br>".join([t.strip() for t in form.get("team","").split("\n") if t.strip()])
     cases = "<br>".join([c.strip() for c in form.get("cases","").split("\n") if c.strip()])
-    notes = form.get("notes","N/A")
+    notes = "<br>".join([nt.strip() for nt in form.get("notes","").split("\n") if nt.strip()])
 
     return f"""
     <html>
@@ -403,14 +403,18 @@ def generate_email_report(form, parsed_html):
     <h2>Team Members on Shift:</h2>
     {team}
 
+    <hr>
+    
     {parsed_html}
 
+    <hr>
     <h3>5. Cases to be Handled by Next Shift</h3>
     {cases if cases else "N/A"}
 
-    <h3>6. Additional Notes :</h3>
-    {notes}
+    <hr><h3>6. Additional Notes :</h3>
+    {notes if notes else "N/A"}
 
+    <hr>
     <h3>7. Statistics</h3>
     Number of "No value" cases: {form.get("novalue","N/A")}<br>
     Alerts NOC: {form.get("noc","N/A")}<br>

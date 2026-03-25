@@ -216,3 +216,7 @@
     </div>
 </body>
 </html>
+
+
+    cases = "<br>".join([c.strip() for c in form.get("cases","").split("\n") if c.strip()])
+    notes = "<br>".join([nt.strip() for nt in form.get form.get("notes","").split("\n") if nt.stip()])
