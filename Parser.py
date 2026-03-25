@@ -323,7 +323,7 @@ def clean_field(val):
 
 def parse_ddos_html(lines):
     if not lines:
-        return "<hr><h3>4. DDoS and Security Events</h3> <br> <p>N/A</p>"
+        return "<hr><h3>4. DDoS and Security Events</h3><p>N/A</p>"
 
     headers = [
         "Customer", "Application / Policy", "Impact Confirmed", "Attack Size",
@@ -404,7 +404,7 @@ def generate_email_report(form, parsed_html):
     {team}
 
     <hr>
-    
+
     {parsed_html}
 
     <hr>
