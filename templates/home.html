@@ -58,7 +58,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 100%;
             margin: auto;
         }
 
@@ -127,8 +127,6 @@
 
     <!-- Manual Section -->
     <div class="section">
-        <h2>Manual Inputs</h2>
-
         <h3>Team Members on Shift</h3>
         <textarea name="team" rows="2"></textarea>
 
@@ -151,7 +149,7 @@
 
     <!-- WhatsApp Input -->
     <div class="section whatsapp">
-        <h2>Paste WhatsApp Chat Data</h2>
+        <h2>Paste Chat Export(Only)</h2>
         <textarea name="text">{{ text }}</textarea><br><br>
         <button type="submit">Generate Report</button>
     </div>
@@ -162,7 +160,7 @@
 <div class="section">
 
     <div class="actions">
-        <button onclick="copyReport()">📋 Copy Report</button>
+        <button onclick="copyReport()">Copy Report</button>
         <button onclick="clearAll()">Clear</button>
     </div>
 

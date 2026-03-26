@@ -220,3 +220,23 @@
 
     cases = "<br>".join([c.strip() for c in form.get("cases","").split("\n") if c.strip()])
     notes = "<br>".join([nt.strip() for nt in form.get form.get("notes","").split("\n") if nt.stip()])
+
+
+[{'subject': 'Major event on CWAF in Still doing impact analysis at 26/03/2026 : 00:54:48 UTC\xa0 affecting\xa0 NBO', 'submitted': '@nithishp', 'case': 'CLSUP-21332', 'service': 'CWAF', 'customer': 'NBO', 'area': 'CWAF - EMEA', 'scrubbing': 'NBO', 'start': '26/03/2026 : 00:54:48 UTC', 'end': 'ongoing', 'impact': 'Still doing impact analysis', 'sie': 'No', 'description': 'Link from ESX-01 to DSW-2 keeps flapping, the redundant link to DSW-1 is stable.', 'current': 'Escalated to Service Provider for further investigation', 'actions': 'There is low power in RX end, opening a case with DC to investigate. Disabling the interface with the help of NetEng.', 'next': 'When changes are implemented'}, {'subject': 'Major event on CWAF in Still doing impact analysis at 26/03/2026 : 00:54:48 UTC\xa0 affecting\xa0 NBO', 'submitted': '@nithishp', 'case': 'CLSUP-21332', 'service': 'CWAF', 'customer': 'NBO', 'area': 'CWAF - EMEA', 'scrubbing': 'NBO', 'start': '26/03/2026 : 00:54:48 UTC', 'end': 'ongoing', 'impact': 'Still doing impact analysis', 'sie': 'No', 'description': 'Link from ESX-01 to DSW-2 keeps flapping, the redundant link to DSW-1 is stable.', 'current': 'Escalated to Service Provider for further investigation', 'actions': 'There is low power in RX end, opening a case with DC to investigate. Disabling the interface with the help of NetEng.', 'next': 'When changes are implemented'}]
+    major = ""
+    for e in parsed:
+        ddos_rows += f"""
+        <tr>
+            <td>{e.get('customer','')}</td>
+            <td>{e.get('asset','')}</td>
+            <td>{e.get('impact','')}</td>
+            <td>{e.get('attack_size','')}</td>
+            <td>{e.get('attack_vector','')}</td>
+            <td>{e.get('protection_engine','')}</td>
+            <td>{e.get('owner','')}</td>
+            <td>{e.get('case','')}</td>
+            <td>{e.get('service','')}</td>
+            <td>{e.get('status','')}</td>
+            <td>{e.get('manual','')}</td>
+        </tr>
+        """

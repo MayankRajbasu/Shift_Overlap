@@ -56,165 +56,87 @@ def split_blocks(lines, keyword):
     return blocks
 
 # ---------------- MAJOR EVENTS ----------------
-def parse_major_events(lines):
-    # if not lines:
-    #     return "<h3>1. Major Events</h3><p>N/A</p>"
 
-    # blocks = split_blocks(lines, "major")
+def parse_major_events(text):
 
-    # html = ["<h3>1. Major Events</h3>"]
+    major_events = []
 
-    # for block_lines in blocks:
-    #     block = "\n".join(block_lines)
+    # Split WhatsApp lines
+    lines = text.splitlines()
 
-    #     title = extract(block, r'(cd?ddos.*|bgp.*|attack.*|incident.*)')
+    current_block = []
+    capturing = False
 
-    #     html.append(f"""
-    #     <b>{title if title != "N/A" else "Security Event"}</b><br><br>
+    for line in lines:
 
-    #     <b>Submitted by:</b> {extract(block, r'submitted by[:\s]+(.*)')}<br>
-    #     <b>Case #:</b> {extract(block, r'case[:\s]+([\w-]+)')}<br>
-    #     <b>Service:</b> {extract(block, r'service[:\s]+(.*)')}<br>
-    #     <b>Start Time:</b> {extract(block, r'start[:\s]+(.*)')}<br>
-    #     <b>End Time:</b> {extract(block, r'end[:\s]+(.*)')}<br>
-    #     <b>Impact:</b> {extract(block, r'impact[:\s]+(.*)')}<br><br>
+        # Remove whatsapp timestamp prefix
+        clean_line = re.sub(r"^\d{4}/\d{2}/\d{2},.*?:\s", "", line).strip()
 
-    #     <b>High-Level Description:</b><br>
-    #     {extract(block, r'description[:\s]+([\s\S]*?)current')}<br><br>
+        # Remove stars
+        clean_line = clean_line.replace("*", "").strip()
 
-    #     <b>Actions Taken:</b> {extract(block, r'action[s]?[:\s]+(.*)')}<br>
-    #     <b>SIE Issued:</b> {extract(block, r'sie[:\s]+(.*)')}<br>
-    #     <b>Affected Area:</b> {extract(block, r'area.*?:\s*(.*)')}<br>
-    #     <b>Next Update:</b> {extract(block, r'next update[:\s]+(.*)')}<br>
-    #     <hr>
-    #     """)
-
-    # return "".join(html)
-    # if not lines:
-    #     return "<h3>1. Major Events</h3><p>N/A</p>"
-
-    # blocks = split_blocks(lines, "major")
-
-    # unique_events = {}
-
-    # for block_lines in blocks:
-    #     block = "\n".join(block_lines)
-
-    #     case = extract(block, r'case[:\s]+([\w-]+)').lower().strip()
-    #     title = extract(block, r'(cd?Subject.*|ddos.*|bgp.*|attack.*|incident.*)').lower().strip()
-
-    #     # Prefer Case as unique key, fallback to title
-    #     key = case if case != "n/a" else title
-
-    #     if key == "n/a":
-    #         continue
-
-    #     # Keep latest occurrence
-    #     unique_events[key] = block
-
-    # html = ["<h3>1. Major Events</h3>"]
-
-    # for block in unique_events.values():
-    #     html.append(f"""
-    #     <b>{extract(block, r'(cd?ddos.*|bgp.*|attack.*|incident.*)')}</b><br><br>
-
-    #     <b>Submitted by:</b> {extract(block, r'submitted by[:\s]+(.*)')}<br>
-    #     <b>Case #:</b> {extract(block, r'case[:\s]+([\w-]+)')}<br>
-    #     <b>Service:</b> {extract(block, r'service[:\s]+(.*)')}<br>
-    #     <b>Start Time:</b> {extract(block, r'start[:\s]+(.*)')}<br>
-    #     <b>End Time:</b> {extract(block, r'end[:\s]+(.*)')}<br>
-    #     <b>Impact:</b> {extract(block, r'impact[:\s]+(.*)')}<br><br>
-
-    #     <b>High-Level Description:</b><br>
-    #     {extract(block, r'description[:\s]+([\s\S]*?)current')}<br><br>
-
-    #     <b>Actions Taken:</b> {extract(block, r'action[s]?[:\s]+(.*)')}<br>
-    #     <b>SIE Issued:</b> {extract(block, r'sie[:\s]+(.*)')}<br>
-    #     <b>Affected Area:</b> {extract(block, r'area.*?:\s*(.*)')}<br>
-    #     <b>Next Update:</b> {extract(block, r'next update[:\s]+(.*)')}<br>
-    #     <hr>
-    #     """)
-
-    # return "".join(html)
-    # def parse_major_events(lines):
-    if not lines:
-        return "<h3>1. Major Events</h3><p>N/A</p>"
-
-    # Split multiple Major Event blocks
-    blocks = split_blocks(lines, "major")
-
-    unique_events = {}
-
-    for block_lines in blocks:
-        block = "\n".join(block_lines)
-
-        # ✅ NEW: Title from Subject
-        subject = extract(block, r'Subject[:\s]+(.*)')
-
-        case = extract(block, r'case[:#\s]+([\w-]+)').lower().strip()
-
-        # Use case if available, else subject as key
-        key = case if case != "n/a" else subject.lower()
-
-        if key == "n/a" or key == "":
+        # Detect start of Major Event
+        if "Major Event" in clean_line or "Major event on" in clean_line:
+            capturing = True
+            current_block = [clean_line]
             continue
 
-        # Keep latest occurrence
-        unique_events[key] = block
+        if capturing:
+            # Stop if new timestamp detected
+            if re.match(r"^\d{4}/\d{2}/\d{2},", line):
+                major_events.append("\n".join(current_block))
+                capturing = False
+            else:
+                current_block.append(clean_line)
 
-    html = ["<h3>1. Major Events</h3>"]
+    # Append last block
+    if current_block:
+        major_events.append("\n".join(current_block))
 
-    for block in unique_events.values():
+    parsed_major = []
 
-        html.append(f"""
-        <b>{extract(block, r'Subject[:\s]+(.*)')}</b><br><br>
+    for block in major_events:
+        event = {}
 
-        <b>Submitted by:</b> {extract(block, r'Submitted by[:\s]+(.*)')}<br>
-        <b>Case #:</b> {extract(block, r'Case[:#\s]+([\w-]+)')}<br>
-        <b>Service:</b> {extract(block, r'Service[:\s]+(.*)')}<br>
-        <b>Customer/Site:</b> {extract(block, r'Customer/Site[:\s]+(.*)')}<br>
-        <b>Area of Impact:</b> {extract(block, r'Area of Impact[:\s]+(.*)')}<br>
-        <b>Scrubbing Center:</b> {extract(block, r'Scrubbing Center.*?:\s*(.*)')}<br><br>
+        def extract(pattern):
+            match = re.search(pattern, block, re.IGNORECASE)
+            return match.group(1).strip() if match else "N/A"
 
-        <b>Start Time:</b> {extract(block, r'Event Start[:\s]+(.*)')}<br>
-        <b>End Time:</b> {extract(block, r'Event End[:\s]+(.*)')}<br>
-        <b>Impact:</b> {extract(block, r'impact[:\s]+(.*)')}<br>
-        <b>SIE Issued:</b> {extract(block, r'SIE.*?:\s*(.*)')}<br><br>
+        event["subject"] = extract(r"Subject\s*:\s*(.+)")
+        event["submitted"] = extract(r"Submitted by\s*:\s*(.+)")
+        event["case"] = extract(r"Case\s*#\s*:\s*(.+)")
+        event["service"] = extract(r"Service\s*:\s*(.+)")
+        event["customer"] = extract(r"Customer/Site\s*:\s*(.+)")
+        event["area"] = extract(r"Area of Impact\s*:\s*(.+)")
+        event["scrubbing"] = extract(r"Scrubbing Center.*?:\s*(.+)")
+        event["start"] = extract(r"Event Start\s*:\s*(.+)")
+        event["end"] = extract(r"Event End\s*:\s*(.+)")
+        event["impact"] = extract(r"impact\s*:\s*(.+)")
+        event["sie"] = extract(r"SIE.*?:\s*(.+)")
+        event["description"] = extract(r"High Level Description\s*:\s*(.+)")
+        event["current"] = extract(r"Current Situation\s*:\s*(.+)")
+        event["actions"] = extract(r"Actions Taken\s*:\s*(.+)")
+        event["next"] = extract(r"Next Update\s*:\s*(.+)")
 
-        <b>High-Level Description:</b><br>
-        {extract(block, r'High Level Description[:\s]+([\s\S]*?)impact')}<br><br>
+        parsed_major.append(event)
 
-        <b>Current Situation:</b> {extract(block, r'Current Situation[:\s]+(.*)')}<br>
-        <b>Actions Taken:</b> {extract(block, r'Actions Taken[:\s]+(.*)')}<br>
-        <b>Next Update:</b> {extract(block, r'Next Update[:\s]+(.*)')}<br>
+    return parsed_major
 
-        <hr>
-        """)
+def deduplicate_events(events):
+    unique = []
+    seen = set()
 
-    return "".join(html)
+    for e in events:
+        key = (e['subject'], e['case'], e['start'])
+        if key not in seen:
+            seen.add(key)
+            unique.append(e)
+
+    return unique
 
 # ---------------- OPERATIONS ----------------
+
 def parse_operations(lines):
-    # if not lines:
-    #     return "<h3>2. Operational Activities</h3><p>N/A</p>"
-
-    # blocks = split_blocks(lines, "action performed")
-    # html = ["<h3>2. Operational Activities</h3>"]
-
-    # for b in blocks:
-    #     block = "\n".join(b)
-
-    #     html.append(f"""
-    #     <b>{extract(block, r'Action Performed[:\s]+(.*)')}</b><br><br>
-    #     <b>Reason:</b> {extract(block, r'Reason[:\s]+(.*)')}<br>
-    #     <b>Time & Date:</b> {extract(block, r'Time[:\s]+(.*)')}<br>
-    #     <b>Performed By:</b> {extract(block, r'(Who|By)[:\s]+(.*)')}<br>
-    #     <b>PoP:</b> {extract(block, r'POP[:\s]+(.*)')}<br>
-    #     <b>Devices:</b> {extract(block, r'Device[:\s]+(.*)')}<br>
-    #     <hr>
-    #     """)
-
-    # return "".join(html)
     if not lines:
         return "<h3>2. Operational Activities</h3><p>N/A</p>"
 
@@ -252,29 +174,8 @@ def parse_operations(lines):
     return "".join(html)
 
 # ---------------- SESSIONS ----------------
+
 def parse_sessions(lines):
-    # if not lines:
-    #     return "<h3>3. Customer Sessions</h3><p>N/A</p>"
-
-    # blocks = split_blocks(lines, "session summary") + split_blocks(lines, "call summary")
-
-    # html = ["<h3>3. Customer Sessions</h3>"]
-
-    # for b in blocks:
-    #     block = "\n".join(b)
-
-    #     html.append(f"""
-    #     <b>Customer:</b> {extract(block, r'Customer[:\s*]+(.*)')}<br>
-    #     <b>Reported by:</b> {extract(block, r'Reported by[:\s*]+(.*)')}<br>
-    #     <b>Product:</b> {extract(block, r'Product[:\s*]+(.*)')}<br>
-    #     <b>Agenda:</b> {extract(block, r'Agenda[:\s*]+(.*)')}<br>
-    #     <b>Planned:</b> {extract(block, r'Planned.*?:\s*(.*)')}<br>
-    #     <b>Status:</b> {extract(block, r'Status[:\s*]+(.*)')}<br>
-    #     <b>Notes:</b> {extract(block, r'(Notes|Case)[:\s*]+(.*)')}<br>
-    #     <hr>
-    #     """)
-
-    # return "".join(html)
     if not lines:
         return "<h3>3. Customer Sessions</h3><p>N/A</p>"
 
@@ -308,124 +209,61 @@ def parse_sessions(lines):
         <b>Agenda:</b> {extract(block, r'Agenda[:\s*]+(.*)')}<br>
         <b>Planned:</b> {extract(block, r'Planned.*?:\s*(.*)')}<br>
         <b>Status:</b> {extract(block, r'Status[:\s*]+(.*)')}<br>
-        <b>Notes:</b> {extract(block, r'(Notes|Case)[:\s*]+(.*)')}<br>
+        <b>Notes:</b> {extract(block, r'Notes[:\s*]+(.*)')}<br>
         <hr>
         """)
 
     return "".join(html)
 
-# ---------------- DDOS (FIXED LOGIC) ----------------
-def clean_field(val):
-    val = re.sub(r'^(Customer name|Asset|Impact.*?(confirmed with customer).|Attack Size|Protection Engine|Attack Vector|Owner|Case|Service Type|Manual intervention|WebDDOS Status|Device Name)\s*', '', val, flags=re.IGNORECASE)
-    # val = val.replace("radware.com", "radware.com")
-    val = re.sub(r'(\d{6})(\d+)', r'\1-\2', val)
-    return val.strip()
+# ---------------- DDOS & WebDDoS Alerts ----------------
 
-def parse_ddos_html(lines):
-    if not lines:
-        return "<hr><h3>4. DDoS and Security Events</h3><p>N/A</p>"
+def parse_ddos_events(text):
+    ddos_events = []
 
-    headers = [
-        "Customer", "Application / Policy", "Impact Confirmed", "Attack Size",
-        "Attack Vector", "Protection Engine", "Owner",
-        "Case #", "Service Type", "DDoS/WebDDoS", "Manual Intervention"
-    ]
+    # Split by WhatsApp timestamp lines
+    messages = re.split(r'\d{4}/\d{2}/\d{2},.*?:', text)
 
-    records, current = [], []
+    for msg in messages:
+        if "1. Customer name" in msg:
 
-    for line in lines:
-        if re.match(r'1\.', line) and current:
-            records.append(current)
-            current = []
-        current.append(line)
+            event = {}
 
-    if current:
-        records.append(current)
+            def extract(field):
+                pattern = rf"{field}\s*(.+)"
+                match = re.search(pattern, msg)
+                return match.group(1).strip() if match else ""
 
-    html = ["<h3>4. DDoS and Security Events</h3><table> <br>"]
-    html.append("<tr>" + "".join(f"<th>{h}</th>" for h in headers) + "</tr>")
+            event["customer"] = extract(r"1\. Customer name")
+            event["asset"] = extract(r"2\. Asset")
+            event["impact"] = extract(r"3\. Impact.*")
+            event["attack_size"] = extract(r"4\. Attack Size")
+            event["protection_engine"] = extract(r"5\. Protection Engine")
+            event["attack_vector"] = extract(r"6\. Attack Vector")
+            event["owner"] = extract(r"7\. Owner")
+            event["case"] = extract(r"8\. Case")
+            event["service"] = extract(r"9\. Service Type")
+            event["manual"] = extract(r"10\. Manual intervention")
 
-    for record in records:
-        data = [""] * 11
-        service_type = ""
+            # Can be either WebDDOS Status or Device Name
+            status_match = re.search(r"11\. WebDDOS Status\s*(.+)", msg)
+            device_match = re.search(r"11\. Device Name\s*(.+)", msg)
 
-        for line in record:
-            m = re.match(r'(\d+)\.\s*(.*)', line)
-            if m:
-                idx = int(m.group(1)) - 1
-                val = clean_field(m.group(2))
-                data[idx] = val
+            event["status"] = (
+                status_match.group(1).strip()
+                if status_match else
+                (device_match.group(1).strip() if device_match else "")
+            )
 
-                if idx == 8:
-                    service_type = val.lower()
+            ddos_events.append(event)
 
-        # Normalize CWAF values (Fix reversed issue)
-        if "cwaf" in service_type:
-            # If values are swapped → fix them
-            # if data[9].lower() == "blocking" and data[10].lower() == "no":
-            #     pass  # already correct
-            # elif data[9].lower() == "no" and data[10].lower() == "blocking":
-            # # elif data[9].lower() == "blocking" and data[10].lower() == "no":
-            #     data[9], data[10] = data[10], data[9]  # swap
-            if data[9].lower() == "blocking" and data[10].lower() == "no":
-                pass  # already correct
-            elif data[9].lower() == "Under Attack" and data[10].lower() == "no":
-                pass  # already correct
-            elif data[9].lower() == "no" and data[10].lower() == "blocking":
-                data[9], data[10] = data[10], data[9]  # swap
-            elif data[9].lower() == "no" and data[10].lower() == "under attack":
-                data[9], data[10] = data[10], data[9]  # swap
-
-        # CDDoS logic
-        else:
-            data[9] = "Blocking"
-            data[10] = "—"
-
-        html.append("<tr>" + "".join(f"<td>{c}</td>" for c in data) + "</tr>")
-
-    html.append("</table>")
-    return "".join(html)
+    return ddos_events
 
 # ---------------- REPORT ----------------
-def generate_email_report(form, parsed_html):
-    
-    team = "<br>".join([t.strip() for t in form.get("team","").split("\n") if t.strip()])
-    cases = "<br>".join([c.strip() for c in form.get("cases","").split("\n") if c.strip()])
-    notes = "<br>".join([nt.strip() for nt in form.get("notes","").split("\n") if nt.strip()])
-
-    return f"""
-    <html>
-    <body style="font-family:Arial">
-
-    <p>Hi Team,<p>
-    <p>Please find the shift overlap summary below.</p>
-
-    <h2>Team Members on Shift:</h2>
-    {team}
-
-    <hr>
-
-    {parsed_html}
-
-    <hr>
-    <h3>5. Cases to be Handled by Next Shift</h3>
-    {cases if cases else "N/A"}
-
-    <hr><h3>6. Additional Notes :</h3>
-    {notes if notes else "N/A"}
-
-    <hr>
-    <h3>7. Statistics</h3>
-    Number of "No value" cases: {form.get("novalue","N/A")}<br>
-    Alerts NOC: {form.get("noc","N/A")}<br>
-    Alerts SOC: {form.get("soc","N/A")}<br>
-
-    </body>
-    </html>
-    """
 
 def generate_report_html(raw_text):
     sections = classify_lines(clean_text(raw_text))
+
+    # major_events = parse_major_events(raw_text)
 
     return f"""
     <html>
@@ -441,15 +279,139 @@ def generate_report_html(raw_text):
     </style>
     </head>
     <body>
-    {parse_major_events(sections.get("major", []))}
     {parse_operations(sections.get("operations", []))}
     {parse_sessions(sections.get("session", []))}
-    {parse_ddos_html(sections.get("ddos", []))}
+
+    </body>
+    </html>
+    """
+
+def generate_email_report(form, parsed_html, ddos_events, parsed_major):
+
+    team = "<br>".join([t.strip() for t in form.get("team", "").split("\n") if t.strip()])
+    cases = "<br>".join([c.strip() for c in form.get("cases", "").split("\n") if c.strip()])
+    notes = "<br>".join([nt.strip() for nt in form.get("notes", "").split("\n") if nt.strip()])
+
+    # ------ Major events --------------
+    parsed_major = deduplicate_events(parsed_major)
+
+    major = ""
+
+    for e in parsed_major:
+
+        # Impact should be derived from subject
+        impact_line = ""
+        if "analysis at" in e["subject"]:
+            impact_line = e["subject"].split("Major event on")[-1].strip()
+
+        major += f"""
+            <b>{e['subject']}</b><br><br>
+
+            <b>Submitted by:</b> {e['submitted']}<br>
+            <b>Case #:</b> {e['case']}<br>
+            <b>Service:</b> {e['service']}<br>
+            <b>Customer/Site:</b> {e['customer']}<br>
+            <b>Area of Impact:</b> {e['area']}<br>
+            <b>Scrubbing Center:</b> {e['scrubbing']}<br><br>
+
+            <b>Start Time:</b> {e['start']}<br>
+            <b>End Time:</b> {e['end']}<br>
+            <b>Impact:</b> {impact_line}<br>
+            <b>SIE Issued:</b> {e['sie']}<br><br>
+
+            <b>High-Level Description:</b><br>
+            {e['description']}<br><br>
+
+            <b>Current Situation:</b> {e['current']}<br>
+            <b>Actions Taken:</b> {e['actions']}<br>
+            <b>Next Update:</b> {e['next']}<br>
+
+            <hr>
+            """
+
+
+    # -------- Build DDoS table rows in Python --------
+    ddos_rows = ""
+    for e in ddos_events:
+        ddos_rows += f"""
+        <tr>
+            <td>{e.get('customer','')}</td>
+            <td>{e.get('asset','')}</td>
+            <td>{e.get('impact','')}</td>
+            <td>{e.get('attack_size','')}</td>
+            <td>{e.get('attack_vector','')}</td>
+            <td>{e.get('protection_engine','')}</td>
+            <td>{e.get('owner','')}</td>
+            <td>{e.get('case','')}</td>
+            <td>{e.get('service','')}</td>
+            <td>{e.get('status','')}</td>
+            <td>{e.get('manual','')}</td>
+        </tr>
+        """
+
+    ddos_table = f"""
+    <h3>4. DDoS and WebDDoS Alert Events</h3>
+    <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;">
+        <tr style="background:#6d8dac;color:white;">
+            <th>Customer</th>
+            <th>Application / Policy</th>
+            <th>Impact Confirmed</th>
+            <th>Attack Size</th>
+            <th>Attack Vector</th>
+            <th>Protection Engine</th>
+            <th>Owner</th>
+            <th>Case #</th>
+            <th>Service Type</th>
+            <th>WebDDoS Status / DDoS Device</th>
+            <th>Manual Intervention</th>
+        </tr>
+        {ddos_rows if ddos_rows else "<tr><td colspan='11'>No events found</td></tr>"}
+    </table>
+    """
+
+    return f"""
+    <html>
+    <body style="font-family:Arial">
+
+    <p>Hi Team,</p>
+    <p>Please find the shift overlap summary below.</p>
+
+    <h2>Team Members on Shift:</h2>
+    {team if team else "N/A"}
+
+    <hr>
+                     
+    <h3>Major Event</h3>
+    {major}
+
+    <hr>
+    
+    {parsed_html}
+
+    <hr>
+
+    {ddos_table}
+
+    <hr>
+    <h3>5. Cases to be Handled by Next Shift</h3>
+    {cases if cases else "N/A"}
+
+    <hr>
+    <h3>6. Additional Notes :</h3>
+    {notes if notes else "N/A"}
+
+    <hr>
+    <h3>7. Statistics</h3>
+    Number of "No value" cases: {form.get("novalue","N/A")}<br>
+    Alerts NOC: {form.get("noc","N/A")}<br>
+    Alerts SOC: {form.get("soc","N/A")}<br>
+
     </body>
     </html>
     """
 
 # ---------------- FLASK ----------------
+
 app = Flask(__name__)
 
 @app.route("/", methods=["GET", "POST"])
@@ -459,26 +421,12 @@ def home():
 
     if request.method == "POST":
         text = request.form["text"]
-        parsed = generate_report_html(text)
+        parsed_html = generate_report_html(text)
+        ddos_events = parse_ddos_events(text)
+        parsed_major = parse_major_events(text)
 
-        output = generate_email_report(request.form, parsed)
-
+        output = generate_email_report(request.form, parsed_html, ddos_events,parsed_major)
     return render_template("home.html", output=output, text=text)
-
-# @app.route("/", methods=["GET", "POST"])
-# def home():
-#     output = ""
-#     form_data = {}
-
-#     if request.method == "POST":
-#         form_data = request.form.to_dict()
-
-#         raw_text = form_data.get("text", "")
-#         parsed = generate_report_html(raw_text)
-
-#         output = generate_email_report(form_data, parsed)
-
-#     return render_template("home.html", output=output, form=form_data)
 
 if __name__ == "__main__":
     app.run(port=5020, debug=True)
