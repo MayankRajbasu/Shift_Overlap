@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Shift Overlap</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            font-size: 11px;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 30px;
+            color: #2c3e50;
+        }
+
+        h2 {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        h3 {
+            margin-top: 20px;
+            margin-bottom: 5px;
+        }
+
+        textarea, input {
+            width: 100%;
+            font-family: Arial;
+            font-size: 11px;
+            /* padding: 8px; */
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        input{
+            height: 30px;
+        }
+        textarea {
+            resize: vertical;
+        }
+
+        .whatsapp textarea {
+            height: 300px;
+        }
+
+        button {
+            background: #2c3e50;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        button:hover {
+            background: #1a252f;
+        }
+
+        .container {
+            max-width: 1500px;
+            margin: auto;
+        }
+
+        .section {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0px 2px 6px rgba(0,0,0,0.08);
+        }
+
+        .output {
+            margin-top: 20px;
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0px 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .output h3 {
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 5px;
+        }
+
+        .output table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 10px;
+            overflow-wrap: anywhere;
+        }
+
+        .output th {
+            background: #6d8dac;
+            color: white;
+            text-align: left;
+        }
+
+        .output td, .output th {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+
+        .output tr:nth-child(even) {
+            background: #f9fbfc;
+        }
+
+        .output hr {
+            border: none;
+            border-top: 1px solid #ddd;
+            margin: 20px 0;
+        }
+
+        .output b {
+            color: #34495e;
+        }
+
+        .actions {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+<form method="POST">
+
+    <!-- Manual Section -->
+    <div class="section">
+        
+        <h3>Team Members on Shift</h3>
+        <textarea name="team" rows="2"></textarea>
+
+        <h3>Cases for Next Shift</h3>
+        <textarea name="cases" rows="2"></textarea>
+
+        <h3>Additional Notes</h3>
+        <textarea name="notes" rows="3"></textarea>
+
+        <h3>Statistics</h3>
+        <b>No Value Cases:</b>
+        <input type="text" name="novalue"><br><br>
+
+        <b>Alerts NOC:</b>
+        <input type="text" name="noc"><br><br>
+
+        <b>Alerts SOC:</b>
+        <input type="text" name="soc"><br><br>
+    </div>
+
+    <!-- WhatsApp Input -->
+    <div class="section whatsapp">
+        <h2>Paste WhatsApp Chat Data</h2>
+        <textarea name="text">{{ text }}</textarea><br><br>
+        <button type="submit">Generate Report</button>
+    </div>
+
+</form>
+
+{% if output %}
+<div class="section">
+
+    <div class="actions">
+        <button onclick="copyReport()">📋 Copy Report</button>
+        <button onclick="clearAll()">Clear</button>
+    </div>
+
+    <div class="output" id="report">
+        {{ output | safe }}
+    </div>
+
+</div>
+{% endif %}
+
+</div>
+
+<script>
+function copyReport() {
+    const report = document.getElementById("report");
+
+    const htmlContent = report.innerHTML;
+    const textContent = report.innerText;
+
+    const blobHtml = new Blob([htmlContent], { type: "text/html" });
+    const blobText = new Blob([textContent], { type: "text/plain" });
+
+    const data = [
+        new ClipboardItem({
+            "text/html": blobHtml,
+            "text/plain": blobText
+        })
+    ];
+
+    navigator.clipboard.write(data).then(() => {
+        alert("Report copied with formatting!");
+    }).catch(err => {
+        alert("Copy failed: " + err);
+    });
+}
+
+function clearAll() {
+    document.querySelector("textarea[name='text']").value = "";
+    document.querySelector("textarea[name='team']").value = "";
+    document.querySelector("textarea[name='cases']").value = "";
+    document.querySelector("textarea[name='notes']").value = "";
+    document.querySelector("input[name='novalue']").value = "";
+    document.querySelector("input[name='noc']").value = "";
+    document.querySelector("input[name='soc']").value = "";
+
+    const reportDiv = document.getElementById("report");
+    if (reportDiv) reportDiv.innerHTML = "";
+}
+</script>
+
+</body>
+</html>
