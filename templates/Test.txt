@@ -220,3 +220,28 @@
 
     cases = "<br>".join([c.strip() for c in form.get("cases","").split("\n") if c.strip()])
     notes = "<br>".join([nt.strip() for nt in form.get form.get("notes","").split("\n") if nt.stip()])
+
+
+
+    function copyReport() {
+    const report = document.getElementById("report");
+
+    const htmlContent = report.innerHTML;
+    const textContent = report.innerText;
+
+    const blobHtml = new Blob([htmlContent], { type: "text/html" });
+    const blobText = new Blob([textContent], { type: "text/plain" });
+
+    const data = [
+        new ClipboardItem({
+            "text/html": blobHtml,
+            "text/plain": blobText
+        })
+    ];
+
+    navigator.clipboard.write(data).then(() => {
+        alert("Report copied with formatting!");
+    }).catch(err => {
+        alert("Copy failed: " + err);
+    });
+}

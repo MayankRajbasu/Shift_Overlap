@@ -2,6 +2,7 @@ import re
 import unicodedata
 from collections import defaultdict
 from flask import Flask, request, render_template
+from html import escape
 
 # ---------------- CLEANING ----------------
 def remove_emojis(text):
@@ -17,6 +18,27 @@ def clean_text(text):
 
 
 # ---------------- CLASSIFICATION ----------------
+# def classify_lines(lines):
+#     sections = defaultdict(list)
+#     current_section = "general"
+
+#     for line in lines:
+#         l = line.lower()
+
+#         if "major event" in l:
+#             current_section = "major"
+#         elif re.search(r'action(?:\s+to\s+be)?\s+performed', l) or "reason for action" in l:
+#             # FIX: also catches "action to be performed"
+#             current_section = "operations"
+#         elif "session summary" in l or "call summary" in l:
+#             current_section = "session"
+#         elif re.match(r'\d+\.', line):
+#             current_section = "ddos"
+
+#         sections[current_section].append(line)
+
+#     return sections
+
 def classify_lines(lines):
     sections = defaultdict(list)
     current_section = "general"
@@ -24,20 +46,22 @@ def classify_lines(lines):
     for line in lines:
         l = line.lower()
 
-        if "major event" in l:
+        if "major event" in l or "incident notification" in l:
+            # BOTH go to same section now
             current_section = "major"
+
         elif re.search(r'action(?:\s+to\s+be)?\s+performed', l) or "reason for action" in l:
-            # FIX: also catches "action to be performed"
             current_section = "operations"
+
         elif "session summary" in l or "call summary" in l:
             current_section = "session"
+
         elif re.match(r'\d+\.', line):
             current_section = "ddos"
 
         sections[current_section].append(line)
 
     return sections
-
 
 # ---------------- COMMON ----------------
 def extract(text, pattern, flags=re.IGNORECASE):
@@ -61,18 +85,185 @@ def split_blocks(lines, pattern):
     return blocks
 
 
-# ---------------- MAJOR EVENTS ----------------
+# ---------------- MAJOR EVENTS & INCIDENTS ----------------
+def detect_event_type(block):
+    b = block.lower()
+    if "incident notification" in b:
+        return "incident"
+    if "major event" in b:
+        return "major"
+    return "unknown"
+
+
+# def parse_major_events(lines):
+#     if not lines:
+#         return "<h3>1. Major Events</h3><b>N/A</b>"
+
+#     blocks = split_blocks(lines, r'major\s+event')
+
+#     unique_events = {}
+
+#     for block_lines in blocks:
+#         block = "\n".join(block_lines)
+
+#         subject = extract(block, r'Subject[:\s]+(.*)')
+#         case    = extract(block, r'Case[:#\s]+([\w-]+)').lower().strip()
+
+#         key = case if case != "n/a" else subject.lower().strip()
+
+#         if not key or key == "n/a":
+#             continue
+
+#         unique_events[key] = block
+
+#     if not unique_events:
+#         return "<h3>1. Major Events</h3><b>N/A</b>"
+
+#     html = ["<h3>1. Major Events</h3>"]
+
+#     for block in unique_events.values():
+#         def field(pattern, blk=block):
+#             val = extract(blk, pattern)
+#             return val if val.lower() != "n/a" else "N/A"
+
+#         html.append(f"""
+#         <b>{field(r'Subject[:\s]+(.*)')}</b><br><br>
+
+#         <b>Submitted by:</b> {field(r'Submitted\s+by[:\s]+(.*)')}<br>
+#         <b>Case #:</b> {field(r'Case[:#\s]+([\w-]+)')}<br>
+#         <b>Service:</b> {field(r'Service[:\s]+(.*)')}<br>
+#         <b>Customer/Site:</b> {field(r'Customer/Site[:\s]+(.*)')}<br>
+#         <b>Area of Impact:</b> {field(r'Area\s+of\s+Impact[:\s]+(.*)')}<br>
+#         <b>Scrubbing Center:</b> {field(r'Scrubbing\s+Center.*?:\s*(.*)')}<br><br>
+
+#         <b>Start Time:</b> {field(r'Event\s+Start[:\s]+(.*)')}<br>
+#         <b>End Time:</b> {field(r'Event\s+End[:\s]+(.*)')}<br>
+#         <b>Impact:</b> {field(r'Impact[:\s]+(.*)')}<br>
+#         <b>SIE Issued:</b> {field(r'SIE.*?:\s*(.*)')}<br><br>
+
+#         <b>High-Level Description:</b><br>
+#         {field(r'High\s+Level\s+Description[:\s]+([\s\S]*?)(?=Current Situation|Actions Taken|$)')}<br><br>
+
+#         <b>Current Situation:</b> {field(r'Current\s+Situation[:\s]+(.*)')}<br>
+#         <b>Actions Taken:</b> {field(r'Actions\s+Taken[:\s]+(.*)')}<br>
+#         <b>Next Update:</b> {field(r'Next\s+Update[:\s]+(.*)')}<br>
+#         <hr>
+#         """)
+
+#     return "".join(html)
+
+# def detect_block_type(block):
+#     b = block.lower()
+#     if "incident notification" in b:
+#         return "incident"
+#     return "major"
+
+
+# def parse_major_events(lines):
+#     if not lines:
+#         return "<h3>1. Major Events & Incidents</h3><b>N/A</b>"
+
+#     blocks = split_blocks(lines, r'major\s+event|incident\s+notification')
+#     html = ["<h3>1. Major Events & Incidents</h3>"]
+#     seen = set()
+
+#     for block_lines in blocks:
+#         block = "\n".join(block_lines)
+#         btype = detect_block_type(block)
+
+#         # dedupe using start time
+#         key = extract(block, r'Event\s+Start.*?:\s*\*?(.*)')
+#         key = key + block_lines[0]
+
+#         if key in seen:
+#             continue
+#         seen.add(key)
+
+#         def f(p):
+#             val = extract(block, p)
+#             return val if val.lower() != "n/a" else "N/A"
+
+#         # ---------------- INCIDENT NOTIFICATION ----------------
+#         if btype == "incident":
+#             # link = f(r'(https?://\S+)')
+
+#             html.append(f"""
+#             <div style="background:#eaf2f8;padding:15px;margin-bottom:20px;border-radius:8px;border:1px solid #aed6f1;">
+#                 <h4 style="color:#1b4f72;">Incident — {escape(f(r'Affected service\s*:\s*\*(.*)'))}</h4>
+
+#                 <b>High Level Description:</b><br>
+#                 {escape(f(r'High level incident description\s*:\s*\*(.*)'))}<br><br>
+
+#                 <b>Submitted by:</b> {escape(f(r'Submitted by:\s*(.*)'))}<br>
+#                 <b>Scrubbing Center / PoP:</b> {escape(f(r'Scrubbing Center/PoP\s*:\s*\*(.*)'))}<br>
+#                 <b>Affected Assets:</b> {escape(f(r'Affected applications/assets\s*:\s*\*(.*)'))}<br><br>
+
+#                 <b>Event Start (UTC):</b> {escape(f(r'Event Start.*?\*\s*(.*)'))}<br>
+#                 <b>Impact:</b> {escape(f(r'Impact\s*:\s*\*(.*)'))}<br>
+#                 <b>Next Update:</b> {escape(f(r'Next Update\s*:\s*\*(.*)'))}<br><br>
+
+#                 <b>Incident Manager:</b> {escape(f(r'Incident Manager\s*:\s*\*(.*)'))}<br>
+#             </div>
+#             """)
+
+#         # ---------------- MAJOR EVENT ----------------
+#         else:
+#             html.append(f"""
+#             <div style="background:#fff4e6;padding:15px;margin-bottom:20px;border-radius:8px;border:1px solid #f5cba7;">
+#                 <h4 style="color:#7d6608;">Major Event — {escape(f(r'Subject[:\s]+(.*)'))}</h4>
+
+#                 <b>Submitted by:</b> {escape(f(r'Submitted\s+by[:\s]+(.*)'))}<br>
+#                 <b>Case #:</b> {escape(f(r'Case[:#\s]+([\w-]+)'))}<br>
+#                 <b>Service:</b> {escape(f(r'Service[:\s]+(.*)'))}<br>
+#                 <b>Customer/Site:</b> {escape(f(r'Customer/Site[:\s]+(.*)'))}<br>
+#                 <b>Area of Impact:</b> {escape(f(r'Area\s+of\s+Impact[:\s]+(.*)'))}<br>
+#                 <b>Scrubbing Center:</b> {escape(f(r'Scrubbing\s+Center.*?:\s*(.*)'))}<br><br>
+
+#                 <b>Start Time:</b> {escape(f(r'Event\s+Start[:\s]+(.*)'))}<br>
+#                 <b>End Time:</b> {escape(f(r'Event\s+End[:\s]+(.*)'))}<br>
+#                 <b>Impact:</b> {escape(f(r'Impact[:\s]+(.*)'))}<br><br>
+
+#                 <b>High-Level Description:</b><br>
+#                 {escape(f(r'High\s+Level\s+Description[:\s]+([\s\S]*?)(?=Current Situation|Actions Taken|$)'))}<br><br>
+
+#                 <b>Current Situation:</b> {escape(f(r'Current\s+Situation[:\s]+(.*)'))}<br>
+#                 <b>Actions Taken:</b> {escape(f(r'Actions\s+Taken[:\s]+(.*)'))}<br>
+#                 <b>Next Update:</b> {escape(f(r'Next\s+Update[:\s]+(.*)'))}
+#             </div>
+#             """)
+
+#     if len(seen) == 0:
+#         return "<h3>1. Major Events & Incidents</h3><b>N/A</b>"
+
+#     return "".join(html)
+
 def parse_major_events(lines):
     if not lines:
-        return "<h3>1. Major Events</h3><p>N/A</p>"
+        return "<h3>1. Major Events</h3><b>N/A</b>"
 
-    blocks = split_blocks(lines, r'major\s+event')
+    # UPDATED: split for both types
+    blocks = split_blocks(lines, r'major\s+event|incident\s+notification')
 
     unique_events = {}
 
     for block_lines in blocks:
         block = "\n".join(block_lines)
+        lower_block = block.lower()
 
+        # ---------------- INCIDENT NOTIFICATION (NEW) ----------------
+        if "incident notification" in lower_block:
+            service = extract(block, r'Affected service\s*:\s*\*(.*)').lower().strip()
+            start   = extract(block, r'Event Start.*?\*\s*(.*)').lower().strip()
+
+            key = f"incident-{service}-{start}"
+
+            if not service or service == "n/a":
+                continue
+
+            unique_events[key] = ("incident", block)
+            continue
+
+        # ---------------- YOUR ORIGINAL MAJOR EVENT LOGIC (UNCHANGED) ----------------
         subject = extract(block, r'Subject[:\s]+(.*)')
         case    = extract(block, r'Case[:#\s]+([\w-]+)').lower().strip()
 
@@ -81,23 +272,52 @@ def parse_major_events(lines):
         if not key or key == "n/a":
             continue
 
-        unique_events[key] = block
+        unique_events[key] = ("major", block)
 
     if not unique_events:
-        return "<h3>1. Major Events</h3><p>N/A</p>"
+        return "<h3>1. Major Events</h3><b>N/A</b>"
 
-    html = ["<h3>1. Major Events</h3>"]
+    html = ["<h3>1. Major Events</h3> <br>"]
 
-    for block in unique_events.values():
+    for etype, block in unique_events.values():
+
         def field(pattern, blk=block):
             val = extract(blk, pattern)
             return val if val.lower() != "n/a" else "N/A"
 
+        # ---------------- INCIDENT HTML (NEW) ----------------
+        if etype == "incident":
+            link = field(r'(https?://\S+)')
+
+            html.append(f"""
+            <div style="background:#eaf2f8;padding:15px;margin-bottom:20px;border-radius:8px;border:1px solid #aed6f1;"> 
+                      
+            <b>Incident — {escape(field(r'Affected service\s*:\s*\*(.*)'))}</b><br><br>
+
+            <b>High Level Description:</b><br>
+            {escape(field(r'High level incident description\s*:\s*\*(.*)'))}<br><br>
+
+            <b>Submitted by:</b> {escape(field(r'Submitted by:\s*(.*)'))}<br>
+            <b>Scrubbing Center / PoP:</b> {escape(field(r'Scrubbing Center/PoP\s*:\s*\*(.*)'))}<br>
+            <b>Affected Assets:</b> {escape(field(r'Affected applications/assets\s*:\s*\*(.*)'))}<br><br>
+
+            <b>Event Start (UTC):</b> {escape(field(r'Event Start.*?\*\s*(.*)'))}<br>
+            <b>Impact:</b> {escape(field(r'Impact\s*:\s*\*(.*)'))}<br>
+            <b>Next Update:</b> {escape(field(r'Next Update\s*:\s*\*(.*)'))}<br><br>
+
+            <b>Incident Manager:</b> {escape(field(r'Incident Manager\s*:\s*\*(.*)'))}<br>
+            </div>
+            <hr>
+            """)
+            continue
+
+        # ---------------- YOUR ORIGINAL HTML (UNCHANGED) ----------------
         html.append(f"""
+        <div style="background:#fff4e6;padding:15px;margin-bottom:20px;border-radius:8px;border:1px solid #f5cba7;">                    
         <b>{field(r'Subject[:\s]+(.*)')}</b><br><br>
 
         <b>Submitted by:</b> {field(r'Submitted\s+by[:\s]+(.*)')}<br>
-        <b>Case #:</b> {field(r'Case[:#\s]+([\w-]+)')}<br>
+        <b>Case #:</b> {field(r'Case[:\s]+([\w-]+)')}<br>
         <b>Service:</b> {field(r'Service[:\s]+(.*)')}<br>
         <b>Customer/Site:</b> {field(r'Customer/Site[:\s]+(.*)')}<br>
         <b>Area of Impact:</b> {field(r'Area\s+of\s+Impact[:\s]+(.*)')}<br>
@@ -114,16 +334,18 @@ def parse_major_events(lines):
         <b>Current Situation:</b> {field(r'Current\s+Situation[:\s]+(.*)')}<br>
         <b>Actions Taken:</b> {field(r'Actions\s+Taken[:\s]+(.*)')}<br>
         <b>Next Update:</b> {field(r'Next\s+Update[:\s]+(.*)')}<br>
+        </div>
         <hr>
         """)
 
     return "".join(html)
 
+#            <b>Reference Link:</b> <a href="{escape(link)}" target="_blank">Open Link</a>
 
 # ---------------- OPERATIONS ----------------
 def parse_operations(lines):
     if not lines:
-        return "<h3>2. Operational Activities</h3><p>N/A</p>"
+        return "<h3>2. Operational Activities</h3><b>N/A</b>"
 
     blocks = split_blocks(lines, r'action(?:\s+to\s+be)?\s+performed')
 
@@ -141,9 +363,9 @@ def parse_operations(lines):
 
     if not unique_ops:
         # FIX: was missing — rendered empty <h3> when all blocks were N/A
-        return "<h3>2. Operational Activities</h3><p>N/A</p>"
+        return "<h3>2. Operational Activities</h3><b>N/A</b>"
 
-    html = ["<h3>2. Operational Activities</h3>"]
+    html = ["<h3>2. Operational Activities</h3><br>"]
 
     for action, block in unique_ops.items():
         def field(pattern, blk=block):
@@ -168,7 +390,7 @@ def parse_operations(lines):
 # ---------------- SESSIONS ----------------
 def parse_sessions(lines):
     if not lines:
-        return "<h3>3. Customer Sessions</h3><p>N/A</p>"
+        return "<h3>3. Customer Sessions</h3><b>N/A</b><hr>"
 
     # FIX: deduplicate blocks from both split calls before processing
     seen = set()
@@ -195,9 +417,9 @@ def parse_sessions(lines):
         unique_sessions[key] = block
 
     if not unique_sessions:
-        return "<h3>3. Customer Sessions</h3><p>N/A</p>"
+        return "<h3>3. Customer Sessions</h3><b>N/A</b><hr>"
 
-    html = ["<h3>3. Customer Sessions</h3>"]
+    html = ["<h3>3. Customer Sessions</h3><br>"]
 
     for block in unique_sessions.values():
         def field(pattern, blk=block):
@@ -222,7 +444,7 @@ def parse_sessions(lines):
 def clean_field(val):
     val = re.sub(
         r'^(Customer name|Asset|Impact.*?(confirmed with customer).|Attack Size|'
-        r'Protection Engine|Attack Vector|Owner|Case|Service Type|Manual intervention|'
+        r'Protection Engine|Attack Vector|Owner|Case|Service Type|Jira|Manual intervention|'
         r'WebDDOS Status|Device Name)\s*',
         '', val, flags=re.IGNORECASE
     )
@@ -231,12 +453,12 @@ def clean_field(val):
 
 def parse_ddos_html(lines):
     if not lines:
-        return "<hr><h3>4. DDoS and Security Events</h3><p>N/A</p>"
+        return "<hr><h3>4. DDoS and Security Events</h3><b>N/A</b>"
 
     headers = [
         "Customer", "Application / Policy", "Impact Confirmed", "Attack Size",
         "Attack Vector", "Protection Engine", "Owner",
-        "Case #", "Service Type", "DDoS/WebDDoS", "Jira", "Manual Intervention"
+        "Case #", "Service Type", "DDoS / WebDDoS Status", "Jira", "Manual Intervention"
     ]
 
     records, current = [], []
@@ -296,9 +518,10 @@ def generate_email_report(form, parsed_html):
     <html>
     <body style="font-family:Arial">
 
-    <p>Hi Team,</p>
-    <p>Please find the shift overlap summary below.</p>
+    <b>Hi Team,</b></br></br>
 
+    <b>Please find the shift overlap summary below</b></br></br>
+    
     <h2>Team Members on Shift:</h2>
     {team if team else "N/A"}
 
@@ -306,15 +529,15 @@ def generate_email_report(form, parsed_html):
 
     {parsed_html}
 
-    <hr>
+    <hr><br>
     <h3>5. Cases to be Handled by Next Shift</h3>
     {cases if cases else "N/A"}
 
-    <hr>
+    <br><hr>
     <h3>6. Additional Notes:</h3>
     {notes if notes else "N/A"}
 
-    <hr>
+    <hr><br>
     <h3>7. Statistics</h3>
     Number of "No value" cases: {form.get("novalue", "N/A")}<br>
     Alerts NOC: {form.get("noc", "N/A")}<br>

@@ -14,13 +14,14 @@
         }
 
         h2 {
-            font-size: 16px;
+            font-size: 14px;
+            margin-top: 10px;
             margin-bottom: 10px;
         }
 
         h3 {
-            margin-top: 20px;
-            margin-bottom: 5px;
+            margin-top: 10px;
+            margin-bottom: 10px;
         }
 
         textarea, input {
@@ -37,6 +38,18 @@
         }
         textarea {
             resize: vertical;
+        }
+
+        textarea.grow {
+            width: 100%;
+            min-height: 40px;
+            resize: none;
+            overflow: hidden;
+            padding: 8px;
+            font-family: Arial;
+            font-size: 14px;
+            line-height: 1.4;
+            box-sizing: border-box;
         }
 
         .whatsapp textarea {
@@ -93,7 +106,7 @@
         .output th {
             background: #6d8dac;
             color: white;
-            text-align: left;
+            text-align: center;
         }
 
         .output td, .output th {
@@ -108,11 +121,12 @@
         .output hr {
             border: none;
             border-top: 1px solid #ddd;
-            margin: 20px 0;
+            margin: 6px 0;
         }
 
         .output b {
             color: #34495e;
+            font-weight: normal;
         }
 
         .actions {
@@ -127,7 +141,7 @@
 <form method="POST">
 
     <!-- Manual Section -->
-    <div class="section">
+    <!-- <div class="section">
         
         <h3>Team Members on Shift</h3>
         <textarea name="team" rows="2"></textarea>
@@ -147,6 +161,28 @@
 
         <b>Alerts SOC:</b>
         <input type="text" name="soc"><br><br>
+    </div> -->
+
+    <div class="section">
+        
+    <h3>Team Members on Shift</h3>
+    <textarea name="team" class="grow"></textarea>
+
+    <h3>Cases for Next Shift</h3>
+    <textarea name="cases" class="grow"></textarea>
+
+    <h3>Additional Notes</h3>
+    <textarea name="notes" class="grow"></textarea>
+
+    <h3>Statistics</h3>
+    <b>No Value Cases:</b>
+    <input type="text" name="novalue"><br><br>
+
+    <b>Alerts NOC:</b>
+    <input type="text" name="noc"><br><br>
+
+    <b>Alerts SOC:</b>
+    <input type="text" name="soc"><br><br>
     </div>
 
     <!-- WhatsApp Input -->
@@ -176,14 +212,36 @@
 </div>
 
 <script>
+function autoGrow(el) {
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+}
+
+document.querySelectorAll("textarea.grow").forEach(el => {
+    el.addEventListener("input", () => autoGrow(el));
+    // grow if pre-filled
+    autoGrow(el);
+});
+
 function copyReport() {
     const report = document.getElementById("report");
 
-    const htmlContent = report.innerHTML;
-    const textContent = report.innerText;
+    // Clone so we can modify styles safely
+    const clone = report.cloneNode(true);
+
+    // Remove any margins/padding Outlook adds space for
+    clone.style.margin = "0";
+    clone.style.padding = "0";
+
+    // Wrap in a zero-margin container (critical for Outlook)
+    const htmlContent = `
+        <div style="margin:0;padding:0;">
+            ${clone.outerHTML}
+        </div>
+    `;
 
     const blobHtml = new Blob([htmlContent], { type: "text/html" });
-    const blobText = new Blob([textContent], { type: "text/plain" });
+    const blobText = new Blob([clone.innerText], { type: "text/plain" });
 
     const data = [
         new ClipboardItem({
@@ -193,12 +251,11 @@ function copyReport() {
     ];
 
     navigator.clipboard.write(data).then(() => {
-        alert("Report copied with formatting!");
+        alert("Report copied perfectly for Outlook!");
     }).catch(err => {
         alert("Copy failed: " + err);
     });
 }
-
 function clearAll() {
     document.querySelector("textarea[name='text']").value = "";
     document.querySelector("textarea[name='team']").value = "";
