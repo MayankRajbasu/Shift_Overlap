@@ -453,7 +453,7 @@ def clean_field(val):
 
 def parse_ddos_html(lines):
     if not lines:
-        return "<hr><h3>4. DDoS and Security Events</h3><b>N/A</b>"
+        return "<h3>4. DDoS and Security Events</h3><b>N/A</b>"
 
     headers = [
         "Customer", "Application / Policy", "Impact Confirmed", "Attack Size",
